@@ -4,13 +4,43 @@ package Date::Extract::Surprise;
 # ABSTRACT: extract probable dates from strings *with surprises*
 
 use Carp qw( croak );
-
+use Scalar::Util qw( blessed );
 # just trying to be helpful.
 use Exporter::Easy (
     OK => [qw( extract_datetimes )],
 );
 
 use DateTime::Format::Flexible qw();
+
+=method new
+
+Just your basic object constructor.
+
+  my $des = Date::Extract::Surprise->new();
+
+Currently takes only one argument:
+
+=for :list
+= DEBUG
+integer greater than 0 for debugging level. higher numbers
+give more detail
+
+It will probably take more in the future.
+
+=cut
+
+sub new {
+    my $class = shift;
+    my $self =
+        bless {
+            DEBUG => 0,
+            @_,
+        },
+    $class;
+
+    return $self;
+}
+
 
 =method extract
 
@@ -29,7 +59,7 @@ sub extract {
 
     # can be called as an object method, class method, or function
     # there's probably better ways to support this.
-    my $self = blessed( $_[0] ) and $_[0]->isa( __PACKAGE__ ) ? shift
+    my $self = blessed( $_[0] ) && $_[0]->isa( __PACKAGE__ ) ? shift
              : $_[0] eq __PACKAGE__ ? shift->new()
              : croak "Please call as a class or object method!\n";
 
@@ -39,7 +69,7 @@ sub extract {
 
     # set a base date for ambiguous DTs we find, default to epoch.
     # if a string value is passed and can't be parsed, croak.
-    my $base = blessed( $args{base} ) and $args{base}->isa( 'DateTime' ) ? delete $args{base}
+    my $base = blessed( $args{base} ) && $args{base}->isa( 'DateTime' ) ? delete $args{base}
              : defined $args{base} ? DateTime::Format::Flexible->parse_datetime( $args{base} )
              : DateTime->new( year => 1970, month => 1, day => 1 );
 
@@ -49,15 +79,26 @@ sub extract {
     # some future features easier (like reporting which lines matched)
     for my $line ( split /[\n\r]+/, $text ) {
 
+        warn " {$line}\n" if $self->{DEBUG} > 0;
+
         # split it into terms and remove chars that may trip us up
-        my @terms = map { (my $s = $_) =~ s/[,]/ /; $s } split q[ ], $line;
+        my @terms = map { (my $s = $_) =~ s/[,]/ /g; $s } split q[ ], $line;
 
         for my $i ( 0 .. $#terms ) {
             for my $j ( $i .. $#terms ) {
                 my $search_str = join ' ', @terms[$i .. $j];
 
+                # clean up other crap that DT::F::F chokes on?
+                $search_str =~ s/at//ig;
+
+                # clean up whitespace
+                $search_str =~ s/(\s){2,}/$1/g;
+                $search_str =~ s/^\s+|\s+$//g;
+
                 # it almost certainly has some *numbers* in it!
                 next unless $search_str =~ /\d/;
+
+                warn "  {$search_str}\n" if $self->{DEBUG} > 1;
 
                 # if we can't determine the *date*, assume epoch
                 DateTime::Format::Flexible->base( $base );
@@ -74,23 +115,28 @@ sub extract {
     return @timestamps;
 }
 
-=method new
 
-Just your basic object constructor.
+=func extract_datetimes
 
-  my $des = Date::Extract::Surprise->new();
+If you're old-skool and prefer things to export a function, you can have it.
 
-Currently takes no arguments.
-Will probably take some in the future.
+It takes the same arguments as the L<extract> method and returns the same values.
 
 =cut
 
-sub new {
-    my $class = shift;
-    my $self = bless { @_ }, $class;
-    return $self;
-}
+sub extract_datetimes {
+    return unless @_;
 
+    # can be called as an object method, class method, or function
+    # there's probably better ways to support this.
+    croak "This is a function. Use extract() if you need a method!\n"
+        if ( blessed( $_[0] ) && $_[0]->isa( __PACKAGE__ ) ) or
+           ( $_[0] eq __PACKAGE__ );
+
+    my $self = __PACKAGE__->new();
+
+    return $self->extract( @_ );
+}
 
 1 || q{life without coffee isn't worth living}; #truth
 __END__
@@ -129,6 +175,10 @@ Because I had the I<opposite> need - to find dates in strings I<even
 if some were going to be bogus>, I created L<Date::Extract::Surprise>
 which will gladly detect anything that even I<remotely looks> like
 it could be a date or time.
+
+B<Bottom line:> at least I<one> of the dates this will 'detect' in some
+text should be what you wanted. It's up to you to figure out which one
+that is! :-)
 
 =head1 SEE ALSO
 
