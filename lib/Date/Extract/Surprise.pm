@@ -197,5 +197,12 @@ I'm hoping this will work on perl 5.6 and before, because I want
 to be helpful to as many people as possible, but I am too lazy
 to test it myself. Bug reports and/or patches please!
 
+=head1 TODO
+
+=for :list
+* more test strings in the tests
+* support more options from L<Date::Extract>
+* more rigorous tests beyond basic functionality
+* eat a sandwich
 
 
