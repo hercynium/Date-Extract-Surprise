@@ -1,6 +1,8 @@
 ### Changelog for CPAN distribution Date-Extract-Surprise
 
 {{ $NEXT }}
+
+0.002     2010-08-18 18:51:17 America/New_York
     * initial release upon an unsuspecting world
 
 ### EOF
